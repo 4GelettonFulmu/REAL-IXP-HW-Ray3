@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>小巷步行模拟器 - 互动步行游戏</title>
+    <style>
+        /* ============================================
+           全局样式
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            overflow: hidden;
+            background: #2c3e50;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ============================================
+           鞋子选择界面
+           ============================================ */
+        #shoeSelection {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #shoeSelection.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .title {
+            color: white;
+            font-size: 56px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            animation: titleBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes titleBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.95);
+            font-size: 20px;
+            margin-bottom: 60px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .shoe-options {
+            display: flex;
+            gap: 80px;
+            margin-bottom: 20px;
+        }
+
+        .shoe-option {
+            background: white;
+            border-radius: 24px;
+            padding: 45px 35px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            min-width: 280px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shoe-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+            transition: left 0.5s;
+        }
+
+        .shoe-option:hover::before {
+            left: 100%;
+        }
+
+        .shoe-option:hover {
+            transform: translateY(-15px) scale(1.08);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        .shoe-option.selected {
+            border: 5px solid #f39c12;
+            transform: scale(1.12);
+            box-shadow: 0 15px 50px rgba(243, 156, 18, 0.5);
+        }
+
+        .shoe-icon {
+            font-size: 90px;
+            margin-bottom: 20px;
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(5deg); }
+        }
+
+        .shoe-option.selected .shoe-icon {
+            animation: iconPulse 0.6s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .shoe-name {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+
+        .shoe-desc {
+            font-size: 15px;
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+
+        .shoe-stats {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #ecf0f1;
+            font-size: 13px;
+            color: #95a5a6;
+        }
+
+        .start-btn {
+            margin-top: 40px;
+            padding: 18px 70px;
+            font-size: 22px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .start-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            transform: scale(1.08) translateY(-3px);
+            box-shadow: 0 12px 30px rgba(243, 156, 18, 0.6);
+        }
+
+        .start-btn:active:not(:disabled) {
+            transform: scale(1.02) translateY(0);
+        }
+
+        .start-btn:disabled {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            cursor: not-allowed;
+            transform: scale(1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            opacity: 0.6;
+        }
+
+        /* ============================================
+           游戏场景
+           ============================================ */
+        #gameScene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                #3a4a5c 0%,
+                #2c3e50 40%,
+                #34495e 60%,
+                #4a5568 100%);
+            display: none;
+        }
+
+        #gameScene.active {
+            display: block;
+            animation: sceneAppear 0.5s ease-out;
+        }
+
+        @keyframes sceneAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 小巷背景层 */
+        .alley {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to right,
+                #1a252f 0%,
+                #2c3e50 15%,
+                #34495e 50%,
+                #2c3e50 85%,
+                #1a252f 100%);
+            border-top: 6px solid #16202b;
+            box-shadow: inset 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 地面透视效果 */
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 45%;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 80px,
+                    rgba(255,255,255,0.03) 80px,
+                    rgba(255,255,255,0.03) 85px
+                ),
+                linear-gradient(to bottom,
+                    rgba(69, 90, 100, 0.4),
+                    rgba(84, 110, 122, 0.6)
+                );
+        }
+
+        /* 终点线 */
+        .finish-line {
+            position: absolute;
+            right: 5%;
+            bottom: 20%;
+            width: 40px;
+            height: 200px;
+            background: repeating-linear-gradient(
+                45deg,
+                #FFD700,
+                #FFD700 20px,
+                #FFF 20px,
+                #FFF 40px
+            );
+            border: 3px solid #000;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            z-index: 5;
+            animation: finishGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes finishGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.9); }
+        }
+
+        .finish-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        /* 墙壁装饰 */
+        .wall-decoration {
+            position: absolute;
+            background: rgba(26, 37, 47, 0.8);
+            border: 3px solid #0d1620;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .window {
+            width: 90px;
+            height: 110px;
+            border-radius: 8px;
+        }
+
+        .window::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #0d1620;
+        }
+
+        .window::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: #0d1620;
+        }
+
+        .window1 { top: 12%; left: 18%; }
+        .window2 { top: 12%; right: 22%; }
+        .window3 { top: 32%; left: 55%; }
+        .brick {
+            width: 60px;
+            height: 40px;
+            top: 45%;
+            left: 35%;
+        }
+
+        /* ============================================
+           角色设计
+           ============================================ */
+        #character {
+            position: absolute;
+            bottom: 25%;
+            left: 10%;
+            width: 70px;
+            height: 140px;
+            transition: left 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+                        bottom 0.5s ease-out,
+                        transform 0.5s ease-out;
+            z-index: 15;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));
+        }
+
+        #character.slow {
+            transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        bottom 0.5s ease-out,
+                        transform 0.5s ease-out;
+        }
+
+        #character.falling {
+            transition: bottom 0.5s ease-out, transform 0.5s ease-out;
+            transform: rotate(90deg);
+        }
+
+        #character.celebrating {
+            animation: celebrate 0.6s ease-in-out 3;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-30px) rotate(-10deg); }
+            75% { transform: translateY(-30px) rotate(10deg); }
+        }
+
+        /* 角色头部 */
+        .char-head {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle at 30% 30%, #ffdbac, #f0c19e);
+            border-radius: 50%;
+            border: 3px solid #333;
+            box-shadow: inset 0 -3px 8px rgba(0,0,0,0.2);
+        }
+
+        /* 眼睛 */
+        .char-head::before,
+        .char-head::after {
+            content: '';
+            position: absolute;
+            top: 12px;
+            width: 5px;
+            height: 5px;
+            background: #333;
+            border-radius: 50%;
+        }
+
+        .char-head::before {
+            left: 8px;
+        }
+
+        .char-head::after {
+            right: 8px;
+        }
+
+        /* 角色身体 */
+        .char-body {
+            position: absolute;
+            top: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 42px;
+            height: 52px;
+            background: linear-gradient(180deg, #3498db, #2980b9);
+            border-radius: 10px;
+            border: 3px solid #333;
+            box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2);
+        }
+
+        /* 衣服装饰 */
+        .char-body::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background: #2c3e50;
+            border-radius: 2px;
+        }
+
+        /* 角色腿部 */
+        .char-leg {
+            position: absolute;
+            bottom: 0;
+            width: 14px;
+            height: 52px;
+            background: linear-gradient(180deg, #34495e, #2c3e50);
+            border: 3px solid #333;
+            border-radius: 7px;
+            transform-origin: top center;
+            box-shadow: inset 0 -3px 6px rgba(0,0,0,0.3);
+        }
+
+        .char-leg.left {
+            left: 16px;
+        }
+
+        .char-leg.right {
+            right: 16px;
+        }
+
+        /* 鞋子 */
+        .char-leg::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: -2px;
+            width: 18px;
+            height: 10px;
+            background: var(--shoe-color, #e74c3c);
+            border-radius: 5px;
+            border: 2px solid #333;
+        }
+
+        /* 腿部动画 */
+        @keyframes stepAnimation {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(35deg); }
+        }
+
+        @keyframes stepAnimationSlow {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(30deg); }
+        }
+
+        .char-leg.stepping {
+            animation: stepAnimation 0.18s ease-in-out;
+        }
+
+        .char-leg.stepping.slow {
+            animation: stepAnimationSlow 0.35s ease-in-out;
+        }
+
+        /* ============================================
+           视觉特效
+           ============================================ */
+        /* 速度线 */
+        .speed-line {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg,
+                rgba(255, 255, 255, 0.8),
+                rgba(255, 255, 255, 0));
+            animation: speedLine 0.3s linear;
+            z-index: 12;
+            pointer-events: none;
+        }
+
+        @keyframes speedLine {
+            from {
+                width: 50px;
+                opacity: 1;
+            }
+            to {
+                width: 0;
+                opacity: 0;
+            }
+        }
+
+        /* 灰尘粒子 */
+        .dust-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(200, 200, 200, 0.6);
+            border-radius: 50%;
+            animation: dustFloat 0.5s ease-out forwards;
+            z-index: 12;
+            pointer-events: none;
+        }
+
+        @keyframes dustFloat {
+            to {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* 点击波纹 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            background: radial-gradient(circle,
+                rgba(255, 255, 255, 0.3),
+                transparent 70%);
+            animation: ripple 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes ripple {
+            from {
+                width: 0;
+                height: 0;
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+            to {
+                width: 120px;
+                height: 120px;
+                opacity: 0;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        /* 摔倒粒子 */
+        .fall-particle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #f39c12, #e67e22);
+            border-radius: 50%;
+            animation: fallParticle 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            pointer-events: none;
+            z-index: 20;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        @keyframes fallParticle {
+            to {
+                transform: translate(var(--tx), var(--ty)) rotate(720deg) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* 震动效果 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* ============================================
+           游戏UI
+           ============================================ */
+        .game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            z-index: 30;
+        }
+
+        .progress-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .progress-label {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg,
+                #3498db 0%,
+                #2ecc71 50%,
+                #f39c12 100%);
+            border-radius: 20px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255,255,255,0.3),
+                transparent);
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 18px;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 18px;
+            color: #3498db;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 35;
+        }
+
+        .control-btn {
+            padding: 12px 22px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.85);
+            border-color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 鞋子指示器 */
+        .shoe-indicator {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            font-size: 50px;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.2);
+            z-index: 30;
+            animation: indicatorFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes indicatorFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* ============================================
+           提示信息
+           ============================================ */
+        .hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 25px 50px;
+            border-radius: 15px;
+            font-size: 26px;
+            font-weight: bold;
+            animation: hintFadeInOut 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.3);
+            text-align: center;
+            max-width: 80%;
+        }
+
+        @keyframes hintFadeInOut {
+            0%, 100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            15%, 85% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* ============================================
+           结果界面
+           ============================================ */
+        #resultScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg,
+                rgba(44, 62, 80, 0.95) 0%,
+                rgba(52, 73, 94, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        #resultScreen.active {
+            display: flex;
+            animation: resultAppear 0.5s ease-out;
+        }
+
+        @keyframes resultAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .result-title {
+            font-size: 72px;
+            color: white;
+            margin-bottom: 40px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: titlePulse 1s ease-in-out infinite;
+        }
+
+        .result-title.success {
+            color: #2ecc71;
+            text-shadow: 0 0 30px rgba(46, 204, 113, 0.6);
+        }
+
+        .result-title.fail {
+            color: #e74c3c;
+            text-shadow: 0 0 30px rgba(231, 76, 60, 0.6);
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .result-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px 60px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+        }
+
+        .result-stat {
+            color: white;
+            font-size: 28px;
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            font-weight: 500;
+        }
+
+        .result-stat-label {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .result-stat-value {
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .result-message {
+            color: rgba(255,255,255,0.9);
+            font-size: 20px;
+            font-style: italic;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .result-buttons {
+            display: flex;
+            gap: 25px;
+        }
+
+        .result-btn {
+            padding: 18px 50px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-btn.primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .result-btn.secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+        }
+
+        .result-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .result-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ============================================
+           响应式设计
+           ============================================ */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 40px;
+            }
+
+            .shoe-options {
+                flex-direction: column;
+                gap: 30px;
+            }
+
+            .shoe-option {
+                min-width: 240px;
+                padding: 35px 25px;
+            }
+
+            .shoe-icon {
+                font-size: 70px;
+            }
+
+            .stat-item {
+                font-size: 14px;
+                padding: 10px 15px;
+            }
+
+            .result-title {
+                font-size: 48px;
+            }
+
+            .result-stat {
+                font-size: 20px;
+            }
+
+            .result-buttons {
+                flex-direction: column;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 32px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .shoe-option {
+                min-width: 200px;
+                padding: 25px 20px;
+            }
+
+            .start-btn {
+                padding: 15px 50px;
+                font-size: 18px;
+            }
+        }
+
+        /* ============================================
+           加载动画
+           ============================================ */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        body {
+            animation: fadeIn 0.5s ease-in;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- ============================================
+             鞋子选择界面
+             ============================================ -->
+        <div id="shoeSelection">
+            <h1 class="title">🚶 小巷步行模拟器</h1>
+            <p class="subtitle">选择你的鞋子，开启独特的步行体验</p>
+            <div class="shoe-options">
+                <!-- 运动鞋选项 -->
+                <div class="shoe-option" data-shoe="sneaker">
+                    <div class="shoe-icon">👟</div>
+                    <div class="shoe-name">运动鞋</div>
+                    <div class="shoe-desc">
+                        速度快，行走稳定<br>
+                        健步如飞，安全可靠
+                    </div>
+                    <div class="shoe-stats">
+                        速度: ⚡⚡⚡ | 稳定: ⭐⭐⭐
+                    </div>
+                </div>
+
+                <!-- 高跟鞋选项 -->
+                <div class="shoe-option" data-shoe="heels">
+                    <div class="shoe-icon">👠</div>
+                    <div class="shoe-name">高跟鞋</div>
+                    <div class="shoe-desc">
+                        优雅但具有挑战性<br>
+                        小心摔倒！谨慎前行
+                    </div>
+                    <div class="shoe-stats">
+                        速度: ⚡ | 风险: ⚠️⚠️⚠️
+                    </div>
+                </div>
+            </div>
+            <button class="start-btn" id="startGameBtn" disabled>开始游戏</button>
+        </div>
+
+        <!-- ============================================
+             游戏场景
+             ============================================ -->
+        <div id="gameScene">
+            <!-- 小巷背景 -->
+            <div class="alley">
+                <div class="ground"></div>
+                <div class="wall-decoration window window1"></div>
+                <div class="wall-decoration window window2"></div>
+                <div class="wall-decoration window window3"></div>
+                <div class="wall-decoration brick"></div>
+
+                <!-- 终点线 -->
+                <div class="finish-line">
+                    <div class="finish-text">终点</div>
+                </div>
+            </div>
+
+            <!-- 角色 -->
+            <div id="character">
+                <div class="char-head"></div>
+                <div class="char-body"></div>
+                <div class="char-leg left"></div>
+                <div class="char-leg right"></div>
+            </div>
+
+            <!-- 游戏UI -->
+            <div class="game-ui">
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>进度</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <span>👣</span>
+                            <span>步数: <span class="stat-value" id="stepCount">0</span></span>
+                        </div>
+                        <div class="stat-item">
+                            <span>📏</span>
+                            <span>距离: <span class="stat-value" id="distanceCount">0</span>m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>⏱️</span>
+                            <span>用时: <span class="stat-value" id="timeCount">0</span>s</span>
+                        </div>
+                        <div class="stat-item" id="fallCountDisplay" style="display: none;">
+                            <span>💥</span>
+                            <span>摔倒: <span class="stat-value" id="fallCount">0</span>次</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button class="control-btn" id="soundToggle">🔊 音效</button>
+                <button class="control-btn" id="restartBtn">🔄 重新开始</button>
+            </div>
+
+            <!-- 鞋子指示器 -->
+            <div class="shoe-indicator" id="shoeIndicator">👟</div>
+        </div>
+
+        <!-- ============================================
+             结果界面
+             ============================================ -->
+        <div id="resultScreen">
+            <div class="result-title" id="resultTitle">🎉 成功！</div>
+            <div class="result-message" id="resultMessage">恭喜你成功到达终点！</div>
+            <div class="result-stats">
+                <div class="result-stat">
+                    <span class="result-stat-label">选择鞋子:</span>
+                    <span class="result-stat-value" id="finalShoe">运动鞋</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-stat-label">总步数:</span>
+                    <span class="result-stat-value" id="finalSteps">0</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-stat-label">行走距离:</span>
+                    <span class="result-stat-value"><span id="finalDistance">0</span> 米</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-stat-label">用时:</span>
+                    <span class="result-stat-value"><span id="finalTime">0</span> 秒</span>
+                </div>
+                <div class="result-stat" id="finalFallDisplay" style="display: none;">
+                    <span class="result-stat-label">摔倒次数:</span>
+                    <span class="result-stat-value" id="finalFalls">0</span>
+                </div>
+            </div>
+            <div class="result-buttons">
+                <button class="result-btn primary" id="playAgainBtn">再玩一次</button>
+                <button class="result-btn secondary" id="changeShoeBtn">更换鞋子</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================
+         * 小巷步行模拟器 - 游戏脚本
+         * ============================================
+         */
+
+        // ============================================
+        // 游戏状态管理
+        // ============================================
+        const GameState = {
+            selectedShoe: null,         // 选择的鞋子类型
+            isLeftFoot: true,           // 当前是否是左脚
+            stepCount: 0,               // 步数计数
+            distance: 0,                // 行走距离(米)
+            fallCount: 0,               // 摔倒次数
+            consecutiveFalls: 0,        // 连续摔倒次数
+            isAnimating: false,         // 是否正在动画中
+            startTime: null,            // 游戏开始时间
+            soundEnabled: true,         // 音效是否开启
+            gameActive: false,          // 游戏是否进行中
+            timerInterval: null         // 计时器
+        };
+
+        // ============================================
+        // 鞋子配置
+        // ============================================
+        const ShoeConfig = {
+            sneaker: {
+                name: '运动鞋',
+                icon: '👟',
+                stepDistance: 100,          // 每步距离(像素)
+                animationDuration: 180,     // 动画时长(毫秒)
+                fallChance: 0,              // 摔倒概率
+                className: '',
+                shoeColor: '#e74c3c'        // 鞋子颜色
+            },
+            heels: {
+                name: '高跟鞋',
+                icon: '👠',
+                stepDistance: 50,           // 每步距离(像素)
+                animationDuration: 350,     // 动画时长(毫秒)
+                fallChance: 0.2,            // 20%摔倒概率
+                maxConsecutiveFalls: 3,     // 最大连续摔倒次数
+                fallRetreatSteps: 3,        // 摔倒后退步数
+                className: 'slow',
+                shoeColor: '#000000'        // 鞋子颜色
+            }
+        };
+
+        // ============================================
+        // DOM 元素引用
+        // ============================================
+        const elements = {
+            // 界面容器
+            shoeSelection: document.getElementById('shoeSelection'),
+            gameScene: document.getElementById('gameScene'),
+            resultScreen: document.getElementById('resultScreen'),
+
+            // 游戏元素
+            character: document.getElementById('character'),
+
+            // UI元素
+            progressFill: document.getElementById('progressFill'),
+            progressPercent: document.getElementById('progressPercent'),
+            stepCount: document.getElementById('stepCount'),
+            distanceCount: document.getElementById('distanceCount'),
+            timeCount: document.getElementById('timeCount'),
+            fallCount: document.getElementById('fallCount'),
+            fallCountDisplay: document.getElementById('fallCountDisplay'),
+            shoeIndicator: document.getElementById('shoeIndicator'),
+
+            // 按钮
+            startGameBtn: document.getElementById('startGameBtn'),
+            soundToggle: document.getElementById('soundToggle'),
+            restartBtn: document.getElementById('restartBtn'),
+
+            // 结果界面
+            resultTitle: document.getElementById('resultTitle'),
+            resultMessage: document.getElementById('resultMessage'),
+            finalShoe: document.getElementById('finalShoe'),
+            finalSteps: document.getElementById('finalSteps'),
+            finalDistance: document.getElementById('finalDistance'),
+            finalTime: document.getElementById('finalTime'),
+            finalFalls: document.getElementById('finalFalls'),
+            finalFallDisplay: document.getElementById('finalFallDisplay'),
+            playAgainBtn: document.getElementById('playAgainBtn'),
+            changeShoeBtn: document.getElementById('changeShoeBtn')
+        };
+
+        // ============================================
+        // 音效系统
+        // ============================================
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        /**
+         * 获取或创建音频上下文
+         */
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            return audioCtx;
+        }
+
+        /**
+         * 播放音效
+         * @param {string} type - 音效类型
+         */
+        function playSound(type) {
+            if (!GameState.soundEnabled) return;
+
+            const ctx = getAudioContext();
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+
+            switch(type) {
+                case 'click':
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    gainNode.gain.value = 0.15;
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.1);
+                    break;
+
+                case 'step-sneaker':
+                    oscillator.frequency.value = 180;
+                    oscillator.type = 'sine';
+                    gainNode.gain.value = 0.08;
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.06);
+                    break;
+
+                case 'step-heels':
+                    oscillator.frequency.value = 1200;
+                    oscillator.type = 'square';
+                    gainNode.gain.value = 0.1;
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.05);
+                    break;
+
+                case 'fall':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.5);
+                    gainNode.gain.value = 0.25;
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.5);
+                    break;
+
+                case 'win':
+                    // 播放胜利音符 (C-E-G 大三和弦)
+                    [523.25, 659.25, 783.99].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.value = 0.15;
+                        const startTime = ctx.currentTime + i * 0.15;
+                        osc.start(startTime);
+                        osc.stop(startTime + 0.3);
+                    });
+                    break;
+
+                case 'gameover':
+                    // 游戏结束音效 (下降音调)
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(300, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.8);
+                    gainNode.gain.value = 0.2;
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.8);
+                    break;
+            }
+        }
+
+        // ============================================
+        // 鞋子选择逻辑
+        // ============================================
+        document.querySelectorAll('.shoe-option').forEach(option => {
+            option.addEventListener('click', function() {
+                playSound('click');
+
+                // 移除所有选中状态
+                document.querySelectorAll('.shoe-option').forEach(o => {
+                    o.classList.remove('selected');
+                });
+
+                // 添加选中状态
+                this.classList.add('selected');
+                GameState.selectedShoe = this.dataset.shoe;
+                elements.startGameBtn.disabled = false;
+            });
+        });
+
+        // ============================================
+        // 游戏开始
+        // ============================================
+        elements.startGameBtn.addEventListener('click', () => {
+            playSound('click');
+            startGame();
+        });
+
+        /**
+         * 开始游戏
+         */
+        function startGame() {
+            // 重置游戏状态
+            resetGameState();
+
+            // 获取鞋子配置
+            const config = ShoeConfig[GameState.selectedShoe];
+
+            // 设置角色样式
+            elements.character.className = config.className;
+            elements.character.style.left = '10%';
+            elements.character.style.bottom = '25%';
+
+            // 设置鞋子颜色
+            document.querySelectorAll('.char-leg').forEach(leg => {
+                leg.style.setProperty('--shoe-color', config.shoeColor);
+            });
+
+            // 更新UI
+            elements.shoeIndicator.textContent = config.icon;
+            updateStats();
+
+            // 显示/隐藏摔倒计数
+            if (GameState.selectedShoe === 'heels') {
+                elements.fallCountDisplay.style.display = 'flex';
+            } else {
+                elements.fallCountDisplay.style.display = 'none';
+            }
+
+            // 切换界面
+            elements.shoeSelection.classList.add('hidden');
+
+            setTimeout(() => {
+                elements.shoeSelection.style.display = 'none';
+                elements.gameScene.classList.add('active');
+                elements.resultScreen.classList.remove('active');
+
+                // 启动游戏
+                GameState.gameActive = true;
+                GameState.startTime = Date.now();
+                startTimer();
+
+                // 显示提示
+                showHint('点击屏幕或按空格键开始行走！');
+            }, 500);
+        }
+
+        /**
+         * 重置游戏状态
+         */
+        function resetGameState() {
+            GameState.isLeftFoot = true;
+            GameState.stepCount = 0;
+            GameState.distance = 0;
+            GameState.fallCount = 0;
+            GameState.consecutiveFalls = 0;
+            GameState.isAnimating = false;
+            GameState.gameActive = false;
+
+            if (GameState.timerInterval) {
+                clearInterval(GameState.timerInterval);
+                GameState.timerInterval = null;
+            }
+        }
+
+        /**
+         * 启动计时器
+         */
+        function startTimer() {
+            if (GameState.timerInterval) {
+                clearInterval(GameState.timerInterval);
+            }
+
+            GameState.timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - GameState.startTime) / 1000);
+                elements.timeCount.textContent = elapsed;
+            }, 100);
+        }
+
+        // ============================================
+        // 游戏场景点击事件
+        // ============================================
+        elements.gameScene.addEventListener('click', (e) => {
+            // 检查游戏状态
+            if (!GameState.gameActive || GameState.isAnimating) return;
+
+            // 忽略UI按钮点击
+            if (e.target.closest('.control-btn')) return;
+
+            // 创建点击波纹效果
+            createRipple(e.clientX, e.clientY);
+
+            // 执行步行
+            performStep();
+        });
+
+        /**
+         * 执行一步
+         */
+        function performStep() {
+            GameState.isAnimating = true;
+            const config = ShoeConfig[GameState.selectedShoe];
+
+            // 检查是否摔倒
+            if (Math.random() < config.fallChance) {
+                handleFall();
+                return;
+            }
+
+            // 重置连续摔倒计数
+            if (GameState.selectedShoe === 'heels') {
+                GameState.consecutiveFalls = 0;
+            }
+
+            // 播放脚步声
+            playSound(GameState.selectedShoe === 'sneaker' ? 'step-sneaker' : 'step-heels');
+
+            // 执行腿部动画
+            animateLeg(config);
+
+            // 移动角色
+            moveCharacter(config);
+
+            // 创建视觉效果
+            if (GameState.selectedShoe === 'sneaker') {
+                createSpeedLine();
+                createDustParticles();
+            }
+
+            // 更新状态
+            GameState.stepCount++;
+            GameState.distance += config.stepDistance / 10; // 转换为米
+            GameState.isLeftFoot = !GameState.isLeftFoot;
+
+            updateStats();
+
+            // 检查是否到达终点
+            setTimeout(() => {
+                GameState.isAnimating = false;
+
+                const currentLeft = parseFloat(elements.character.style.left) || 10;
+                if (currentLeft >= 85) {
+                    handleWin();
+                }
+            }, config.animationDuration);
+        }
+
+        /**
+         * 腿部动画
+         */
+        function animateLeg(config) {
+            const leg = GameState.isLeftFoot ?
+                elements.character.querySelector('.char-leg.left') :
+                elements.character.querySelector('.char-leg.right');
+
+            leg.classList.add('stepping');
+            if (config.className) {
+                leg.classList.add('slow');
+            }
+
+            setTimeout(() => {
+                leg.classList.remove('stepping', 'slow');
+            }, config.animationDuration);
+        }
+
+        /**
+         * 移动角色
+         */
+        function moveCharacter(config) {
+            const currentLeft = parseFloat(elements.character.style.left) || 10;
+            const movePercent = (config.stepDistance / window.innerWidth) * 100;
+            const newLeft = Math.min(currentLeft + movePercent, 90);
+            elements.character.style.left = newLeft + '%';
+        }
+
+        /**
+         * 处理摔倒
+         */
+        function handleFall() {
+            playSound('fall');
+            GameState.fallCount++;
+            GameState.consecutiveFalls++;
+
+            // 摔倒动画
+            elements.character.classList.add('falling');
+            elements.character.style.bottom = '18%';
+
+            // 屏幕震动
+            elements.gameScene.classList.add('shake');
+            setTimeout(() => {
+                elements.gameScene.classList.remove('shake');
+            }, 400);
+
+            // 创建摔倒粒子效果
+            createFallParticles();
+
+            // 检查是否连续摔倒过多
+            const config = ShoeConfig.heels;
+            if (GameState.consecutiveFalls >= config.maxConsecutiveFalls) {
+                setTimeout(() => handleGameOver(), 1500);
+                return;
+            }
+
+            // 显示提示
+            showHint(`哎呀！摔倒了！(${GameState.consecutiveFalls}/${config.maxConsecutiveFalls})`);
+
+            // 恢复站立并后退
+            setTimeout(() => {
+                elements.character.classList.remove('falling');
+                elements.character.style.bottom = '25%';
+
+                // 后退距离
+                const currentLeft = parseFloat(elements.character.style.left) || 10;
+                const retreatPercent = ((config.stepDistance * config.fallRetreatSteps) / window.innerWidth) * 100;
+                const newLeft = Math.max(10, currentLeft - retreatPercent);
+                elements.character.style.left = newLeft + '%';
+
+                // 更新距离
+                GameState.distance = Math.max(0, GameState.distance - (config.stepDistance * config.fallRetreatSteps / 10));
+                updateStats();
+
+                setTimeout(() => {
+                    GameState.isAnimating = false;
+                }, 500);
+            }, 1500);
+        }
+
+        /**
+         * 处理胜利
+         */
+        function handleWin() {
+            playSound('win');
+            GameState.gameActive = false;
+
+            // 停止计时器
+            if (GameState.timerInterval) {
+                clearInterval(GameState.timerInterval);
+            }
+
+            // 庆祝动画
+            elements.character.classList.add('celebrating');
+
+            setTimeout(() => {
+                elements.character.classList.remove('celebrating');
+                showResult(true);
+            }, 2000);
+        }
+
+        /**
+         * 处理游戏结束
+         */
+        function handleGameOver() {
+            playSound('gameover');
+            GameState.gameActive = false;
+
+            if (GameState.timerInterval) {
+                clearInterval(GameState.timerInterval);
+            }
+
+            showResult(false);
+        }
+
+        /**
+         * 显示结果界面
+         */
+        function showResult(success) {
+            const elapsedTime = Math.floor((Date.now() - GameState.startTime) / 1000);
+            const config = ShoeConfig[GameState.selectedShoe];
+
+            // 设置标题
+            if (success) {
+                elements.resultTitle.textContent = '🎉 成功抵达！';
+                elements.resultTitle.className = 'result-title success';
+
+                // 根据表现给出不同的消息
+                if (GameState.selectedShoe === 'sneaker') {
+                    elements.resultMessage.textContent = '稳健的步伐带你走向成功！';
+                } else {
+                    if (GameState.fallCount === 0) {
+                        elements.resultMessage.textContent = '完美表现！你是高跟鞋大师！';
+                    } else if (GameState.fallCount <= 2) {
+                        elements.resultMessage.textContent = '尽管有些波折，但你优雅地完成了挑战！';
+                    } else {
+                        elements.resultMessage.textContent = '虽然摔倒多次，但你坚持到了最后！';
+                    }
+                }
+            } else {
+                elements.resultTitle.textContent = '💔 游戏结束';
+                elements.resultTitle.className = 'result-title fail';
+                elements.resultMessage.textContent = '连续摔倒太多次了，也许运动鞋更适合你？';
+            }
+
+            // 填充统计数据
+            elements.finalShoe.textContent = config.name;
+            elements.finalSteps.textContent = GameState.stepCount;
+            elements.finalDistance.textContent = GameState.distance.toFixed(1);
+            elements.finalTime.textContent = elapsedTime;
+            elements.finalFalls.textContent = GameState.fallCount;
+
+            // 显示/隐藏摔倒统计
+            if (GameState.selectedShoe === 'heels') {
+                elements.finalFallDisplay.style.display = 'flex';
+            } else {
+                elements.finalFallDisplay.style.display = 'none';
+            }
+
+            // 显示结果界面
+            elements.resultScreen.classList.add('active');
+        }
+
+        /**
+         * 更新统计数据
+         */
+        function updateStats() {
+            elements.stepCount.textContent = GameState.stepCount;
+            elements.distanceCount.textContent = GameState.distance.toFixed(1);
+            elements.fallCount.textContent = GameState.fallCount;
+
+            // 更新进度条
+            const currentLeft = parseFloat(elements.character.style.left) || 10;
+            const progress = Math.min(((currentLeft - 10) / 75) * 100, 100);
+            elements.progressFill.style.width = progress + '%';
+            elements.progressPercent.textContent = Math.floor(progress) + '%';
+        }
+
+        // ============================================
+        // 视觉效果函数
+        // ============================================
+
+        /**
+         * 创建点击波纹效果
+         */
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            elements.gameScene.appendChild(ripple);
+
+            setTimeout(() => ripple.remove(), 600);
+        }
+
+        /**
+         * 创建速度线效果
+         */
+        function createSpeedLine() {
+            const line = document.createElement('div');
+            line.className = 'speed-line';
+
+            const charRect = elements.character.getBoundingClientRect();
+            line.style.left = charRect.left + 'px';
+            line.style.bottom = '28%';
+
+            elements.gameScene.appendChild(line);
+            setTimeout(() => line.remove(), 300);
+        }
+
+        /**
+         * 创建灰尘粒子效果
+         */
+        function createDustParticles() {
+            for (let i = 0; i < 3; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'dust-particle';
+
+                const charRect = elements.character.getBoundingClientRect();
+                particle.style.left = charRect.left + charRect.width / 2 + 'px';
+                particle.style.bottom = '23%';
+
+                const angle = Math.PI + (Math.random() - 0.5) * Math.PI / 2;
+                const distance = 20 + Math.random() * 30;
+                particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+
+                elements.gameScene.appendChild(particle);
+                setTimeout(() => particle.remove(), 500);
+            }
+        }
+
+        /**
+         * 创建摔倒粒子效果
+         */
+        function createFallParticles() {
+            const particleCount = 10;
+            const charRect = elements.character.getBoundingClientRect();
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'fall-particle';
+
+                particle.style.left = charRect.left + charRect.width / 2 + 'px';
+                particle.style.top = charRect.top + charRect.height / 2 + 'px';
+
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const distance = 50 + Math.random() * 60;
+                particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+
+                elements.gameScene.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+        /**
+         * 显示提示信息
+         */
+        function showHint(text) {
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            hint.textContent = text;
+            elements.gameScene.appendChild(hint);
+
+            setTimeout(() => hint.remove(), 2500);
+        }
+
+        // ============================================
+        // 控制按钮事件
+        // ============================================
+
+        // 音效切换
+        elements.soundToggle.addEventListener('click', () => {
+            GameState.soundEnabled = !GameState.soundEnabled;
+            elements.soundToggle.textContent = GameState.soundEnabled ? '🔊 音效' : '🔇 音效';
+
+            if (GameState.soundEnabled) {
+                playSound('click');
+            }
+        });
+
+        // 重新开始
+        elements.restartBtn.addEventListener('click', () => {
+            playSound('click');
+            startGame();
+        });
+
+        // 再玩一次
+        elements.playAgainBtn.addEventListener('click', () => {
+            playSound('click');
+            startGame();
+        });
+
+        // 更换鞋子
+        elements.changeShoeBtn.addEventListener('click', () => {
+            playSound('click');
+
+            elements.gameScene.classList.remove('active');
+            elements.resultScreen.classList.remove('active');
+            elements.shoeSelection.style.display = 'flex';
+
+            setTimeout(() => {
+                elements.shoeSelection.classList.remove('hidden');
+            }, 10);
+        });
+
+        // ============================================
+        // 键盘支持
+        // ============================================
+        document.addEventListener('keydown', (e) => {
+            // 空格键控制步行
+            if (e.code === 'Space' && GameState.gameActive && !GameState.isAnimating) {
+                e.preventDefault();
+                performStep();
+            }
+
+            // R键重新开始
+            if (e.code === 'KeyR' && GameState.gameActive) {
+                e.preventDefault();
+                playSound('click');
+                startGame();
+            }
+
+            // M键切换音效
+            if (e.code === 'KeyM') {
+                e.preventDefault();
+                GameState.soundEnabled = !GameState.soundEnabled;
+                elements.soundToggle.textContent = GameState.soundEnabled ? '🔊 音效' : '🔇 音效';
+                if (GameState.soundEnabled) playSound('click');
+            }
+        });
+
+        // ============================================
+        // 触摸支持优化
+        // ============================================
+        let touchStartTime = 0;
+
+        elements.gameScene.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+        });
+
+        elements.gameScene.addEventListener('touchend', (e) => {
+            // 防止误触（触摸时间太短）
+            if (Date.now() - touchStartTime < 50) return;
+
+            if (!GameState.gameActive || GameState.isAnimating) return;
+            if (e.target.closest('.control-btn')) return;
+
+            const touch = e.changedTouches[0];
+            createRipple(touch.clientX, touch.clientY);
+            performStep();
+        });
+
+        // ============================================
+        // 游戏初始化完成
+        // ============================================
+        console.log('%c🚶 小巷步行模拟器已加载！', 'color: #3498db; font-size: 16px; font-weight: bold;');
+        console.log('%c💡 提示：可以使用空格键步行，R键重新开始，M键切换音效', 'color: #95a5a6; font-size: 12px;');
+    </script>
+</body>
+</html>

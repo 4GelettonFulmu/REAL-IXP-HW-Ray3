@@ -1,6 +1,24 @@
-# Interactive Alleyway Walking Game
+# Interactive Alleyway Walking Game (小巷步行模拟器)
 
 A fun 2D interactive web game where you control a character walking through an alleyway, choosing between sneakers for speed and stability, or high heels for an elegant but challenging experience.
+
+## 🎮 Available Versions
+
+This game comes in two versions:
+
+### 1. **Phaser.js Version** (`index.html` + `game.js`)
+- Professional game framework (Phaser.js 3.60)
+- Advanced features and extensive customization
+- Modular ES6 class-based architecture
+- Best for developers who want to extend the game
+
+### 2. **Standalone HTML Version** (`game.html`) ⭐ **Recommended**
+- Single-file implementation
+- No external dependencies (except Phaser CDN for version 1)
+- Pure HTML/CSS/JavaScript
+- Easier to understand and modify
+- Perfect for learning and quick deployment
+- Chinese language interface (中文界面)
 
 ## Features
 
@@ -98,7 +116,13 @@ Works on all modern browsers:
 
 ## Running Locally
 
-### Option 1: Simple HTTP Server (Recommended)
+### Quick Start (Recommended)
+**Just open `game.html` directly in your browser!** No server required.
+
+### Option 1: For Standalone HTML Version
+Simply double-click `game.html` or drag it into your browser. That's it!
+
+### Option 2: For Phaser.js Version (HTTP Server Required)
 ```bash
 # Using Python 3
 python -m http.server 8000
@@ -112,17 +136,40 @@ npx http-server
 
 Then open `http://localhost:8000` in your browser.
 
-### Option 2: Direct File Access
+### Option 3: Direct File Access for Phaser Version
 Simply open `index.html` in your browser. Most modern browsers support this.
 
 ## File Structure
 
 ```
 .
-├── index.html          # Main HTML file
-├── game.js            # Complete game logic
-└── README.md          # This file
+├── game.html          # ⭐ Standalone HTML version (recommended)
+├── index.html         # Phaser.js version HTML entry point
+├── game.js            # Phaser.js version game logic
+└── README.md          # This documentation
 ```
+
+## What's New in game.html
+
+The standalone HTML version includes several improvements:
+
+### Enhanced Features
+- ✨ **Better Visual Effects**: Improved animations, particle systems, and transitions
+- 🎨 **Modern UI Design**: Gradient backgrounds, glassmorphism effects, and smooth animations
+- 🎯 **Detailed Character Design**: More expressive character with eyes and better proportions
+- 🏁 **Visible Finish Line**: Clear golden finish line with glow effects
+- 📊 **Real-time Timer**: Live game timer display
+- 🎮 **Better Controls**: Space, R, and M keyboard shortcuts
+- 📱 **Touch Optimized**: Improved mobile touch handling
+- 🔊 **Enhanced Audio**: Improved sound system with better audio context management
+- 💬 **Chinese Interface**: Complete Chinese language support
+
+### Code Improvements
+- 📝 **Comprehensive Comments**: Every section well-documented in Chinese
+- 🎯 **Better Organization**: Clear separation of concerns
+- 🔧 **Configuration System**: Easy-to-modify game constants
+- 🎨 **Modern CSS**: Advanced animations and effects
+- 🚀 **Performance Optimized**: Efficient animations and cleanup
 
 ## Acceptance Criteria ✓
 
